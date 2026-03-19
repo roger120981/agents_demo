@@ -77,19 +77,19 @@ defmodule AgentsDemo.Agents.Factory do
   # Model Configuration (edit these module attributes to change models)
   # ---------------------------------------------------------------------------
 
-  # Primary model for agent conversations
+  # Primary model for agent conversations (ChatReqLLM uses "provider:model_id" format)
   # See: https://docs.anthropic.com/en/docs/models-overview
   @main_model "claude-sonnet-4-6"
+  # @main_model "anthropic:claude-sonnet-4-6"
 
   # Title generation uses a lighter/faster model for cost efficiency
   # Haiku is ~10x cheaper than Sonnet and sufficient for generating titles
   @title_model "claude-haiku-4-5"
-  # Uncomment when using Bedrock fallback:
-  # @title_fallback_model "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+  # @title_model "anthropic:claude-haiku-4-5"
 
-  # For OpenAI, uncomment and use:
-  # @main_model "gpt-4o"
-  # @title_model "gpt-4o-mini"
+  # For OpenAI via ChatReqLLM, uncomment and use:
+  # @main_model "openai:gpt-4o"
+  # @title_model "openai:gpt-4o-mini"
 
   @doc """
   Creates an agent with the standard configuration.
@@ -103,6 +103,8 @@ defmodule AgentsDemo.Agents.Factory do
   - `:timezone` - Optional. IANA timezone string (default: "UTC").
   - `:interrupt_on` - Optional. Map of tool names requiring approval.
     Pass `nil` to disable HITL entirely.
+  - `:tool_context` - Optional. Map of caller-supplied data passed to tool functions
+    via `LLMChain.custom_context`. Defaults to `%{}`. Example: `%{user_id: 42}`.
 
   ## Examples
 
@@ -143,6 +145,7 @@ defmodule AgentsDemo.Agents.Factory do
     user_scope = Keyword.get(opts, :user_scope)
     timezone = Keyword.get(opts, :timezone, "UTC")
     interrupt_on = Keyword.get(opts, :interrupt_on, default_interrupt_on())
+    tool_context = Keyword.get(opts, :tool_context, %{})
 
     Agent.new(
       %{
@@ -154,7 +157,8 @@ defmodule AgentsDemo.Agents.Factory do
         fallback_models: get_fallback_models(),
         before_fallback: get_before_fallback(),
         # Add any custom tools here (tools not provided by middleware)
-        tools: []
+        tools: [],
+        tool_context: tool_context
       },
       # Since we specify the full middleware stack, don't add defaults
       replace_default_middleware: true
