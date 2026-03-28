@@ -272,7 +272,7 @@ defmodule AgentsDemoWeb.ChatLive do
       end
 
     case result do
-      {:ok, content} ->
+      {:ok, %{content: content}} ->
         {:noreply,
          socket
          |> assign(:selected_file_path, path)
@@ -563,6 +563,32 @@ defmodule AgentsDemoWeb.ChatLive do
   end
 
   @impl true
+  def handle_info({:file_system, {:file_moved, old_path, new_path}}, socket) do
+    Logger.debug("FileSystem event file_moved: #{old_path} -> #{new_path}")
+
+    socket = assign_filesystem_files(socket)
+
+    socket =
+      case socket.assigns[:selected_file_path] do
+        nil ->
+          socket
+
+        selected when selected == old_path ->
+          update_selected_file_for_move(socket, new_path)
+
+        selected ->
+          if String.starts_with?(selected, old_path <> "/") do
+            moved_path = String.replace_prefix(selected, old_path, new_path)
+            update_selected_file_for_move(socket, moved_path)
+          else
+            socket
+          end
+      end
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_info({:file_system, {event_type, path}}, socket) do
     Logger.debug("FileSystem event #{event_type}: #{path}")
     {:noreply, assign_filesystem_files(socket)}
@@ -720,25 +746,40 @@ defmodule AgentsDemoWeb.ChatLive do
   end
 
   defp assign_filesystem_files(socket) do
-    # Convert to a map of path => %{type: :file, directory: virtual_dir}
+    # Use list_entries to get FileEntry structs, filter out directories,
+    # and build a map of path => %{type: :file, directory: virtual_dir}
     files =
       socket.assigns[:filesystem_scope]
-      |> FileSystemServer.list_files()
-      |> Enum.map(fn path ->
-        # Extract directory information
+      |> FileSystemServer.list_entries()
+      |> Enum.reject(fn entry -> entry.entry_type == :directory end)
+      |> Enum.map(fn entry ->
         directory =
-          path
+          entry.path
           |> Path.dirname()
           |> case do
             "/" -> "Root"
             dir -> dir
           end
 
-        {path, %{type: :file, directory: directory}}
+        {entry.path, %{type: :file, directory: directory}}
       end)
       |> Enum.into(%{})
 
     assign(socket, :files, files)
+  end
+
+  defp update_selected_file_for_move(socket, new_path) do
+    case FileSystemServer.read_file(socket.assigns.filesystem_scope, new_path) do
+      {:ok, %{content: content}} ->
+        socket
+        |> assign(:selected_file_path, new_path)
+        |> assign(:selected_file_content, content)
+
+      {:error, _reason} ->
+        socket
+        |> assign(:selected_file_path, nil)
+        |> assign(:selected_file_content, nil)
+    end
   end
 
   @impl true

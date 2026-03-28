@@ -121,6 +121,10 @@ defmodule AgentsDemo.Agents.Coordinator do
 
   - `:filesystem_scope` - Required. Filesystem scope tuple (e.g., `{:user, user_id}`)
   - `:inactivity_timeout` - Milliseconds before agent stops (default: 10 minutes)
+  - `:tool_context` - Map of additional caller-supplied data that will be available to
+    all tool functions as their second argument. Defaults to `%{}`.
+    Note: `:user_scope` is automatically injected as `:current_scope` in `tool_context`,
+    so tool functions always have access to `context.current_scope`.
   - `:factory_opts` - Additional options passed to your Factory module (e.g., `:timezone` for custom middleware)
 
   ## Returns
@@ -151,6 +155,13 @@ defmodule AgentsDemo.Agents.Coordinator do
         factory_opts: [timezone: "America/New_York"]
       )
 
+      # With caller context for tool functions
+      {:ok, session} = AgentsDemo.Agents.Coordinator.start_conversation_session(
+        conversation_id,
+        filesystem_scope: filesystem_scope,
+        tool_context: %{user_id: user_id, tenant: "acme"}
+      )
+
   """
   def start_conversation_session(conversation_id, opts \\ []) do
     # Validate required filesystem scope
@@ -173,12 +184,20 @@ defmodule AgentsDemo.Agents.Coordinator do
       end
 
     user_scope = Keyword.get(opts, :user_scope)
+    tool_context = Keyword.get(opts, :tool_context, %{})
 
     agent_id = conversation_agent_id(conversation_id)
 
     case AgentServer.get_pid(agent_id) do
       nil ->
-        do_start_session(conversation_id, agent_id, filesystem_scope, user_scope, opts)
+        do_start_session(
+          conversation_id,
+          agent_id,
+          filesystem_scope,
+          user_scope,
+          tool_context,
+          opts
+        )
 
       pid ->
         Logger.debug("Agent session already running for conversation #{conversation_id}")
@@ -411,7 +430,14 @@ defmodule AgentsDemo.Agents.Coordinator do
     "conversation:#{conversation_id}"
   end
 
-  defp do_start_session(conversation_id, agent_id, filesystem_scope, user_scope, opts) do
+  defp do_start_session(
+         conversation_id,
+         agent_id,
+         filesystem_scope,
+         user_scope,
+         tool_context,
+         opts
+       ) do
     Logger.info(
       "Starting agent session for conversation #{conversation_id} with filesystem_scope #{inspect(filesystem_scope)}"
     )
@@ -421,12 +447,16 @@ defmodule AgentsDemo.Agents.Coordinator do
     factory_opts = Keyword.get(opts, :factory_opts, [])
 
     # 2. Create agent from factory (configuration from code)
-    # Pass the explicit filesystem scope and user scope to the Factory
+    # Auto-merge user_scope into tool_context so tool functions always receive
+    # the Phoenix scope as context.current_scope.
+    tool_context = Map.put(tool_context, :current_scope, user_scope)
+
     merged_factory_opts =
       factory_opts
       |> Keyword.put(:agent_id, agent_id)
       |> Keyword.put(:filesystem_scope, filesystem_scope)
       |> Keyword.put(:user_scope, user_scope)
+      |> Keyword.put(:tool_context, tool_context)
       |> Keyword.put(:timezone, timezone)
 
     {:ok, agent} = AgentsDemo.Agents.Factory.create_agent(merged_factory_opts)

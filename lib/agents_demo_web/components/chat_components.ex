@@ -516,7 +516,11 @@ defmodule AgentsDemoWeb.ChatComponents do
           value={@input}
           phx-change="update_input"
           phx-debounce="300"
-          placeholder={if @agent_status == :interrupted, do: "Approve or reject pending tools first...", else: "Type your message..."}
+          placeholder={
+            if @agent_status == :interrupted,
+              do: "Approve or reject pending tools first...",
+              else: "Type your message..."
+          }
           class="flex-1 px-5 py-3.5 border-2 border-[var(--color-border)] rounded-xl bg-white dark:bg-[var(--color-surface)] text-[var(--color-text-primary)] text-base outline-none focus:border-[var(--color-user-message)] focus:ring-4 focus:ring-[var(--color-user-message)]/10 hover:border-[var(--color-text-tertiary)] transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
           autocomplete="off"
           disabled={@agent_status in [:running, :interrupted]}
@@ -534,14 +538,12 @@ defmodule AgentsDemoWeb.ChatComponents do
     {type, icon, classes, disabled} =
       case assigns.agent_status do
         :running ->
-          {"button", "hero-stop",
-           "bg-red-600 hover:bg-red-700 hover:shadow-lg transition-all",
+          {"button", "hero-stop", "bg-red-600 hover:bg-red-700 hover:shadow-lg transition-all",
            false}
 
         :interrupted ->
           {"submit", "hero-paper-airplane",
-           "bg-[var(--color-user-message)] opacity-50 cursor-not-allowed",
-           true}
+           "bg-[var(--color-user-message)] opacity-50 cursor-not-allowed", true}
 
         _ ->
           {"submit", "hero-paper-airplane",
@@ -561,7 +563,10 @@ defmodule AgentsDemoWeb.ChatComponents do
       type={@button_type}
       phx-click={if @agent_status == :running, do: "cancel_agent"}
       title={if @agent_status == :running, do: "Stop agent"}
-      class={["px-5 py-3.5 text-white border-none rounded-xl flex items-center justify-center min-w-[56px] shadow-md", @classes]}
+      class={[
+        "px-5 py-3.5 text-white border-none rounded-xl flex items-center justify-center min-w-[56px] shadow-md",
+        @classes
+      ]}
       disabled={@disabled}
     >
       <.icon name={@icon} class="w-5 h-5" />

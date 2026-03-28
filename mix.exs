@@ -43,10 +43,10 @@ defmodule AgentsDemo.MixProject do
       {:bcrypt_elixir, "~> 3.0"},
       # {:langchain, "~> 0.6.0"},
       # {:langchain, path: "../my_langchain"},
-      {:sagents, "~> 0.3.0"},
+      {:sagents, "~> 0.4.2"},
       # {:sagents, path: "../sagents"},
       # {:sagents_live_debugger, path: "../sagents_live_debugger"},
-      {:sagents_live_debugger, "~> 0.3.0"},
+      {:sagents_live_debugger, "~> 0.3.1"},
       {:phoenix, "~> 1.8.1"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
@@ -77,7 +77,8 @@ defmodule AgentsDemo.MixProject do
       {:bandit, "~> 1.5"},
       {:mdex, "~> 0.11"},
       {:lumis, "~> 0.1"},
-      {:tidewave, "~> 0.5", only: :dev}
+      {:tidewave, "~> 0.5", only: :dev},
+      {:dotenvy, "~> 1.1.0"}
     ]
   end
 
