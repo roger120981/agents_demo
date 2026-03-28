@@ -77,7 +77,8 @@ defmodule AgentsDemo.MixProject do
       {:bandit, "~> 1.5"},
       {:mdex, "~> 0.11"},
       {:lumis, "~> 0.1"},
-      {:tidewave, "~> 0.5", only: :dev}
+      {:tidewave, "~> 0.5", only: :dev},
+      {:dotenvy, "~> 1.1.0"}
     ]
   end
 
