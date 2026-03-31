@@ -385,6 +385,60 @@ defmodule AgentsDemoWeb.ChatLive do
   end
 
   @impl true
+  def handle_event("question_select", %{"value" => value}, socket) do
+    response = %{type: :answer, selected: [value]}
+    {:noreply, AgentLiveHelpers.handle_question_response(socket, response)}
+  end
+
+  @impl true
+  def handle_event("question_single_submit", %{"selected" => value} = params, socket) do
+    other_text = Map.get(params, "other_text")
+    response = %{type: :answer, selected: [value]}
+
+    response =
+      if other_text && other_text != "" do
+        Map.put(response, :other_text, other_text)
+      else
+        response
+      end
+
+    {:noreply, AgentLiveHelpers.handle_question_response(socket, response)}
+  end
+
+  @impl true
+  def handle_event("question_multi_submit", params, socket) do
+    selected = Map.get(params, "selected", [])
+
+    if selected == [] do
+      {:noreply, put_flash(socket, :error, "Please select at least one option")}
+    else
+      other_text = Map.get(params, "other_text")
+      response = %{type: :answer, selected: selected}
+
+      response =
+        if other_text && other_text != "" do
+          Map.put(response, :other_text, other_text)
+        else
+          response
+        end
+
+      {:noreply, AgentLiveHelpers.handle_question_response(socket, response)}
+    end
+  end
+
+  @impl true
+  def handle_event("question_freeform_submit", %{"text" => text}, socket) do
+    response = %{type: :answer, other_text: text}
+    {:noreply, AgentLiveHelpers.handle_question_response(socket, response)}
+  end
+
+  @impl true
+  def handle_event("question_cancel", _params, socket) do
+    response = %{type: :cancel}
+    {:noreply, AgentLiveHelpers.handle_question_response(socket, response)}
+  end
+
+  @impl true
   def handle_event("toggle_debug_mode", _params, socket) do
     # Toggle debug mode (per-viewer preference)
     new_debug_mode = !socket.assigns.debug_mode
@@ -458,7 +512,7 @@ defmodule AgentsDemoWeb.ChatLive do
 
   @impl true
   def handle_info({:agent, {:status_changed, :interrupted, interrupt_data}}, socket) do
-    Logger.info("Agent execution interrupted - awaiting human approval")
+    Logger.info("Agent execution interrupted - awaiting human response")
     Logger.debug("Interrupt data: #{inspect(interrupt_data)}")
 
     {:noreply, AgentLiveHelpers.handle_status_interrupted(socket, interrupt_data)}
@@ -805,6 +859,8 @@ defmodule AgentsDemoWeb.ChatLive do
           streaming_delta={@streaming_delta}
           agent_status={@agent_status}
           pending_tools={@pending_tools}
+          pending_question={@pending_question}
+          remaining_questions_count={length(@remaining_questions)}
           interrupt_data={@interrupt_data}
           current_scope={@current_scope}
           conversation_id={@conversation_id}

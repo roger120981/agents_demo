@@ -34,6 +34,60 @@ const Hooks = {
       })
     }
   },
+  QuestionForm: {
+    mounted() {
+      this.syncState()
+      this.el.addEventListener("change", () => this.syncState())
+    },
+    updated() {
+      this.syncState()
+    },
+    syncState() {
+      const form = this.el
+      const checkboxes = form.querySelectorAll('input[type="checkbox"][name="selected[]"]')
+      const radios = form.querySelectorAll('input[type="radio"][name="selected"]')
+      const otherInput = form.querySelector('[data-other-input]')
+      const submitBtn = form.querySelector('[data-submit-btn]')
+
+      // Determine if "other" is selected
+      let otherSelected = false
+      let anySelected = false
+
+      if (checkboxes.length > 0) {
+        checkboxes.forEach(cb => {
+          if (cb.checked) anySelected = true
+          if (cb.checked && cb.value === "other") otherSelected = true
+        })
+      } else if (radios.length > 0) {
+        radios.forEach(r => {
+          if (r.checked) anySelected = true
+          if (r.checked && r.value === "other") otherSelected = true
+        })
+      }
+
+      // Enable/disable "other" textarea
+      if (otherInput) {
+        otherInput.disabled = !otherSelected
+        if (!otherSelected) {
+          otherInput.classList.add("opacity-40")
+        } else {
+          otherInput.classList.remove("opacity-40")
+        }
+      }
+
+      // Enable/disable submit button
+      if (submitBtn) {
+        submitBtn.disabled = !anySelected
+        if (!anySelected) {
+          submitBtn.classList.add("opacity-40", "cursor-not-allowed")
+          submitBtn.classList.remove("hover:bg-blue-700")
+        } else {
+          submitBtn.classList.remove("opacity-40", "cursor-not-allowed")
+          submitBtn.classList.add("hover:bg-blue-700")
+        }
+      }
+    }
+  },
   ConversationList: {
     mounted() {
       this.handleScroll = () => {

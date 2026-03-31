@@ -4,7 +4,7 @@
 Mimic.copy(LangChain.ChatModels.ChatAnthropic)
 Mimic.copy(LangChain.ChatModels.ChatOpenAI)
 
-ExUnit.start(exclude: [:web_tool], capture_log: true)
+ExUnit.start(exclude: [:web_tool, :live_call], capture_log: true)
 # ExUnit.start(exclude: [:web_tool], capture_log: false)
 
 # Clean up test filesystem after entire test suite completes

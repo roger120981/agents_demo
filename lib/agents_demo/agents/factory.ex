@@ -405,7 +405,8 @@ defmodule AgentsDemo.Agents.Factory do
            AgentsDemo.Middleware.InjectCurrentTime,
            AgentsDemo.Middleware.UserContextMiddleware,
            Sagents.Middleware.Summarization,
-           Sagents.Middleware.ConversationTitle
+           Sagents.Middleware.ConversationTitle,
+           Sagents.Middleware.AskUserQuestion
          ]
        ]},
 
@@ -422,9 +423,20 @@ defmodule AgentsDemo.Agents.Factory do
       Sagents.Middleware.Summarization,
 
       # PatchToolCalls - fix dangling tool calls from interrupted conversations
-      Sagents.Middleware.PatchToolCalls
+      Sagents.Middleware.PatchToolCalls,
+
+      # AskUserQuestion - structured questions with typed responses Gives the
+      # agent an `ask_user` tool for presenting single-select, multi-select, or
+      # freeform questions to the user via the interrupt/resume lifecycle. The
+      # UI renders appropriate controls based on response_type.
+      Sagents.Middleware.AskUserQuestion
     ]
-    # Conditionally add HumanInTheLoop if interrupt_on is configured.
+    # HumanInTheLoop MUST be last. During resume, HITL executes all tools
+    # (including auto-approved ones from other middleware). If those tools
+    # produce interrupts (e.g., ask_user), HITL hands off via {:cont} to the
+    # next middleware in the resume cycle. Middleware that already ran (earlier
+    # in the list) won't get a second chance, so interrupt-producing middleware
+    # must come before HITL.
     |> HumanInTheLoop.maybe_append(interrupt_on)
   end
 end
