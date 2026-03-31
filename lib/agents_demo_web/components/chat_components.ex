@@ -351,6 +351,8 @@ defmodule AgentsDemoWeb.ChatComponents do
   attr :input, :string, doc: "The user input being drafted for a new message"
   attr :agent_status, :atom, default: nil
   attr :pending_tools, :list, default: []
+  attr :pending_question, :map, default: nil
+  attr :remaining_questions_count, :integer, default: 0
   attr :interrupt_data, :map, default: nil
   attr :current_scope, :any, default: nil
   attr :conversation_id, :string, default: nil
@@ -501,6 +503,13 @@ defmodule AgentsDemoWeb.ChatComponents do
               pending_tools={@pending_tools}
               interrupt_data={@interrupt_data}
               debug_mode={@debug_mode}
+            />
+          <% end %>
+
+          <%= if @agent_status == :interrupted && @pending_question do %>
+            <.question_prompt
+              question={@pending_question}
+              remaining_count={@remaining_questions_count}
             />
           <% end %>
         </div>
@@ -1315,6 +1324,223 @@ defmodule AgentsDemoWeb.ChatComponents do
         </div>
       </div>
     <% end %>
+    """
+  end
+
+  # Component: Question Prompt (AskUserQuestion interrupt)
+  attr :question, :map, required: true
+  attr :remaining_count, :integer, default: 0
+
+  def question_prompt(assigns) do
+    ~H"""
+    <div
+      id="question-prompt"
+      class="px-6 py-4 border-t-2 border-blue-400 bg-blue-50 dark:bg-blue-900/20"
+    >
+      <div class="max-w-3xl mx-auto">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div class="flex items-center gap-3">
+            <.icon
+              name="hero-question-mark-circle"
+              class="w-6 h-6 text-blue-600 dark:text-blue-400"
+            />
+            <h3 class="text-lg font-bold text-blue-900 dark:text-blue-100 m-0">
+              Question
+            </h3>
+          </div>
+          <%= if @remaining_count > 0 do %>
+            <span class="px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 text-xs font-medium rounded">
+              +{@remaining_count} more
+            </span>
+          <% end %>
+        </div>
+
+        <div class="text-sm text-blue-900 dark:text-blue-100 mb-4 font-medium prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+          {render_markdown(@question.question)}
+        </div>
+
+        <%= if @question.context do %>
+          <div class="text-xs text-blue-700 dark:text-blue-300 mb-4 italic prose prose-xs dark:prose-invert max-w-none prose-p:my-1">
+            {render_markdown(@question.context)}
+          </div>
+        <% end %>
+
+        <%= case @question.response_type do %>
+          <% :single_select -> %>
+            <%= if @question.allow_other do %>
+              <%!-- Form-based single select with "Other" option --%>
+              <form
+                phx-submit="question_single_submit"
+                phx-hook="QuestionForm"
+                id="question-single-form"
+                class="mb-4"
+              >
+                <div class="space-y-2 mb-4">
+                  <label
+                    :for={option <- @question.options}
+                    class="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-700 rounded-lg cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all duration-150"
+                  >
+                    <input
+                      type="radio"
+                      name="selected"
+                      value={option.value}
+                      class="mt-0.5 w-4 h-4 border-blue-400 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {option.label}
+                      </div>
+                      <%= if option.description do %>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {option.description}
+                        </div>
+                      <% end %>
+                    </div>
+                  </label>
+                  <label class="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-700 rounded-lg cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all duration-150">
+                    <input
+                      type="radio"
+                      name="selected"
+                      value="other"
+                      class="mt-0.5 w-4 h-4 border-blue-400 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div class="flex-1">
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                        Other
+                      </div>
+                      <textarea
+                        name="other_text"
+                        rows="2"
+                        disabled
+                        data-other-input
+                        placeholder="Describe your choice..."
+                        class="w-full px-3 py-2 text-sm border border-blue-200 dark:border-blue-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y opacity-40 transition-opacity duration-150"
+                      ></textarea>
+                    </div>
+                  </label>
+                </div>
+                <button
+                  type="submit"
+                  disabled
+                  data-submit-btn
+                  class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors duration-150 opacity-40 cursor-not-allowed"
+                >
+                  Submit
+                </button>
+              </form>
+            <% else %>
+              <%!-- Click-to-select single select (no "Other") --%>
+              <div class="space-y-2 mb-4">
+                <div
+                  :for={option <- @question.options}
+                  phx-click="question_select"
+                  phx-value-value={option.value}
+                  class="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-700 rounded-lg cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all duration-150"
+                >
+                  <div class="w-4 h-4 mt-0.5 rounded-full border-2 border-blue-400 dark:border-blue-500 flex-shrink-0">
+                  </div>
+                  <div>
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {option.label}
+                    </div>
+                    <%= if option.description do %>
+                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {option.description}
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% :multi_select -> %>
+            <form
+              phx-submit="question_multi_submit"
+              phx-hook="QuestionForm"
+              id="question-multi-form"
+              class="mb-4"
+            >
+              <div class="space-y-2 mb-4">
+                <label
+                  :for={option <- @question.options}
+                  class="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-700 rounded-lg cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all duration-150"
+                >
+                  <input
+                    type="checkbox"
+                    name="selected[]"
+                    value={option.value}
+                    class="mt-0.5 w-4 h-4 rounded border-blue-400 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {option.label}
+                    </div>
+                    <%= if option.description do %>
+                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {option.description}
+                      </div>
+                    <% end %>
+                  </div>
+                </label>
+                <%= if @question.allow_other do %>
+                  <label class="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 border-2 border-blue-200 dark:border-blue-700 rounded-lg cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all duration-150">
+                    <input
+                      type="checkbox"
+                      name="selected[]"
+                      value="other"
+                      class="mt-0.5 w-4 h-4 rounded border-blue-400 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div class="flex-1">
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                        Other
+                      </div>
+                      <textarea
+                        name="other_text"
+                        rows="2"
+                        disabled
+                        data-other-input
+                        placeholder="Describe your choice..."
+                        class="w-full px-3 py-2 text-sm border border-blue-200 dark:border-blue-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y opacity-40 transition-opacity duration-150"
+                      ></textarea>
+                    </div>
+                  </label>
+                <% end %>
+              </div>
+              <button
+                type="submit"
+                disabled
+                data-submit-btn
+                class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors duration-150 opacity-40 cursor-not-allowed"
+              >
+                Submit
+              </button>
+            </form>
+          <% :freeform -> %>
+            <form phx-submit="question_freeform_submit" id="question-freeform-form" class="mb-4">
+              <textarea
+                name="text"
+                rows="3"
+                placeholder="Type your response..."
+                class="w-full px-3 py-2 text-sm border border-blue-200 dark:border-blue-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y mb-3"
+              ></textarea>
+              <button
+                type="submit"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-150"
+              >
+                Submit
+              </button>
+            </form>
+        <% end %>
+
+        <%= if @question.allow_cancel do %>
+          <button
+            phx-click="question_cancel"
+            class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline transition-colors duration-150"
+          >
+            Skip this question
+          </button>
+        <% end %>
+      </div>
+    </div>
     """
   end
 
