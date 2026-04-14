@@ -800,12 +800,11 @@ defmodule AgentsDemoWeb.ChatLive do
   end
 
   defp assign_filesystem_files(socket) do
-    # Use list_entries to get FileEntry structs, filter out directories,
-    # and build a map of path => %{type: :file, directory: virtual_dir}
+    # Use list_entries to get FileEntry structs and build a map of
+    # path => %{type: :file, directory: virtual_dir}
     files =
       socket.assigns[:filesystem_scope]
       |> FileSystemServer.list_entries()
-      |> Enum.reject(fn entry -> entry.entry_type == :directory end)
       |> Enum.map(fn entry ->
         directory =
           entry.path
