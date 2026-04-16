@@ -724,6 +724,7 @@ defmodule AgentsDemoWeb.ChatComponents do
         "failed" -> "w-5 h-5 text-red-600 dark:text-red-500"
         "rejected" -> "w-5 h-5 text-orange-600 dark:text-orange-500"
         "interrupted" -> "w-5 h-5 text-yellow-600 dark:text-yellow-500"
+        "cancelled" -> "w-5 h-5 text-red-600 dark:text-red-500"
         _ -> "w-5 h-5 text-gray-400"
       end
 
@@ -738,7 +739,9 @@ defmodule AgentsDemoWeb.ChatComponents do
     <div class={[
       "flex items-center gap-2 ml-1 pl-3 pr-4 py-2 border-l-4 rounded",
       @effective_status == "interrupted" && "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500",
-      @effective_status != "interrupted" && "bg-blue-50 dark:bg-blue-900/20 border-blue-500"
+      @effective_status == "cancelled" && "bg-red-50 dark:bg-red-900/20 border-red-500",
+      @effective_status not in ["interrupted", "cancelled"] &&
+        "bg-blue-50 dark:bg-blue-900/20 border-blue-500"
     ]}>
       <.icon
         name={
@@ -748,6 +751,7 @@ defmodule AgentsDemoWeb.ChatComponents do
             @effective_status == "failed" -> "hero-x-circle"
             @effective_status == "rejected" -> "hero-no-symbol"
             @effective_status == "interrupted" -> "hero-hand-raised"
+            @effective_status == "cancelled" -> "hero-x-mark"
             true -> "hero-ellipsis-horizontal-circle"
           end
         }
@@ -765,6 +769,13 @@ defmodule AgentsDemoWeb.ChatComponents do
         class="text-[10px] font-medium tracking-wide uppercase ml-auto px-2 py-0.5 rounded-full text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30"
       >
         Failed
+      </span>
+
+      <span
+        :if={@effective_status == "cancelled"}
+        class="text-[10px] font-medium tracking-wide uppercase ml-auto px-2 py-0.5 rounded-full text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30"
+      >
+        Cancelled
       </span>
 
       <span

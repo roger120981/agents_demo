@@ -1,6 +1,6 @@
 # Project Demo Document
 
-This is a demonstration file for testing the search_text functionality.
+This is a demonstration file for testing the find_in_file functionality.
 
 ## Introduction
 
@@ -11,11 +11,11 @@ TODO: Add more detailed introduction with project background
 ## Features
 
 ### Feature 1: Text Search
-The search_text tool allows you to find patterns across files. It supports:
+The find_in_file tool allows you to find text or regex patterns within a single file. It supports:
 - Case-sensitive and case-insensitive searches
 - Regular expressions
 - Context lines around matches
-- Searching specific files or all files
+- Use list_files first to discover paths, then call find_in_file per path
 
 ### Feature 2: File Management
 TODO: Document the file management capabilities

@@ -138,25 +138,11 @@ defmodule AgentsDemoWeb.AgentLiveHelpersTest do
       assert result.assigns.streaming_delta == nil
     end
 
-    test "creates cancellation message without conversation_id" do
-      socket = new_socket(%{}, [:messages])
-
-      result = AgentLiveHelpers.handle_status_cancelled(socket)
-
-      # The message is inserted into the stream, check it was created
-      assert result.assigns.agent_status == :cancelled
-    end
-
-    test "persists cancellation message when conversation_id exists" do
+    test "does not persist a cancellation message (AgentServer owns persistence)" do
       socket = new_socket(%{conversation_id: 123}, [:messages])
 
       Conversations
-      |> expect(:append_text_message, fn conv_id, message_type, text ->
-        assert conv_id == 123
-        assert message_type == :assistant
-        assert text =~ "cancelled"
-        {:ok, %{id: 1, content: %{"text" => text}}}
-      end)
+      |> reject(:append_text_message, 3)
 
       result = AgentLiveHelpers.handle_status_cancelled(socket)
       assert result.assigns.agent_status == :cancelled

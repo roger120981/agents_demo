@@ -120,6 +120,8 @@ defmodule AgentsDemo.Agents.Coordinator do
   ## Options
 
   - `:filesystem_scope` - Required. Filesystem scope tuple (e.g., `{:user, user_id}`)
+  - `:user_scope` - Optional. The Phoenix scope (e.g., `current_scope`). Automatically
+    injected into `tool_context` as `:current_scope`, so tool functions receive `context.current_scope`.
   - `:inactivity_timeout` - Milliseconds before agent stops (default: 10 minutes)
   - `:tool_context` - Map of additional caller-supplied data that will be available to
     all tool functions as their second argument. Defaults to `%{}`.
