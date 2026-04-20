@@ -233,7 +233,7 @@ defmodule AgentsDemo.Conversations do
     query =
       DisplayMessage
       |> where([m], m.conversation_id == ^conversation_id)
-      |> order_by([m], [asc: m.inserted_at, asc: m.sequence])
+      |> order_by([m], asc: m.inserted_at, asc: m.sequence)
 
     query =
       case Keyword.get(opts, :limit) do

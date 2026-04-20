@@ -19,8 +19,16 @@ defmodule AgentsDemo.Agents.AgentPersistence do
         Logger.debug("Persisted agent state for #{agent_id} (#{context})")
         :ok
 
-      {:error, reason} ->
-        {:error, reason}
+      {:error, %Ecto.Changeset{errors: errors}} = error ->
+        if conversation_deleted?(errors) do
+          Logger.warning(
+            "Skipping agent state persistence for #{agent_id} (#{context}): conversation no longer exists"
+          )
+
+          :ok
+        else
+          error
+        end
     end
   end
 
@@ -32,5 +40,12 @@ defmodule AgentsDemo.Agents.AgentPersistence do
 
   defp extract_conversation_id(agent_id) do
     String.replace_prefix(agent_id, "conversation-", "")
+  end
+
+  defp conversation_deleted?(changeset_errors) do
+    Enum.any?(changeset_errors, fn
+      {:conversation_id, {_msg, opts}} -> Keyword.get(opts, :constraint) == :foreign
+      _ -> false
+    end)
   end
 end

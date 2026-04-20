@@ -1623,7 +1623,7 @@ defmodule AgentsDemoWeb.ChatComponents do
 
   def render_markdown_code(text) when is_binary(text) do
     text
-    |> Lumis.highlight!(language: "markdown")
+    |> Lumis.highlight!(formatter: {:html_inline, language: "markdown"})
     |> Phoenix.HTML.raw()
   end
 
