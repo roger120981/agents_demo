@@ -8,10 +8,12 @@ defmodule AgentsDemo.Agents.Coordinator do
 
   ## Usage
 
-      # Start or resume a conversation agent with explicit filesystem scope
-      filesystem_scope = {:user, current_user.id}
+      # Start or resume a conversation agent. Pass the tenant scope and
+      # filesystem scope from the caller's session (e.g. a LiveView socket).
+      filesystem_scope = {:user, current_scope.user.id}
       {:ok, session} = AgentsDemo.Agents.Coordinator.start_conversation_session(
         conversation_id,
+        scope: current_scope,
         filesystem_scope: filesystem_scope
       )
 
@@ -37,8 +39,6 @@ defmodule AgentsDemo.Agents.Coordinator do
   **1. In mount/3 - Subscribe to agent events:**
 
       def mount(%{"conversation_id" => conversation_id}, _session, socket) do
-        user_id = socket.assigns.current_user.id
-
         if connected?(socket) do
           # Subscribe to agent events for real-time updates
           AgentsDemo.Agents.Coordinator.ensure_subscribed_to_conversation(conversation_id)
@@ -51,11 +51,19 @@ defmodule AgentsDemo.Agents.Coordinator do
 
       def handle_event("send_message", %{"message" => message_text}, socket) do
         conversation_id = socket.assigns.conversation_id
-        user_id = socket.assigns.current_user.id
-        filesystem_scope = {:user, user_id}
+        current_scope = socket.assigns.current_scope
+        filesystem_scope = {:user, current_scope.user.id}
 
-        # Start agent session with explicit filesystem scope
-        case AgentsDemo.Agents.Coordinator.start_conversation_session(conversation_id, filesystem_scope: filesystem_scope) do
+        # Start agent session. Pass `:scope` so sagents can thread it through
+        # persistence callbacks (arg #1) and tool `context.scope`. Pass
+        # `:filesystem_scope` so FileSystem middleware operates on the right
+        # bucket. The two are independent — same owner, different purposes.
+        session_opts = [
+          scope: current_scope,
+          filesystem_scope: filesystem_scope
+        ]
+
+        case AgentsDemo.Agents.Coordinator.start_conversation_session(conversation_id, session_opts) do
           {:ok, session} ->
             # Create and add message to agent
             message = Message.new_user!(message_text)
@@ -120,13 +128,21 @@ defmodule AgentsDemo.Agents.Coordinator do
   ## Options
 
   - `:filesystem_scope` - Required. Filesystem scope tuple (e.g., `{:user, user_id}`)
-  - `:user_scope` - Optional. The Phoenix scope (e.g., `current_scope`). Automatically
-    injected into `tool_context` as `:current_scope`, so tool functions receive `context.current_scope`.
+  - `:scope` - The Phoenix scope (e.g., `current_scope`). In production this should
+    come from the caller's session (e.g., a LiveView's `socket.assigns.current_scope`).
+    `nil` is allowed for tests, admin scripts, or background jobs, but tenant-scoped
+    queries downstream will have no owner to filter by. Set on the agent's `:scope`
+    field via the Factory; sagents propagates it as the first positional argument to
+    persistence callbacks and as `context.scope` to tool functions.
+    **Sizing note:** the scope struct is copied across process boundaries on every
+    hop (LiveView → AgentServer → tool invocations). If your Phoenix Scope preloads
+    heavy Ecto associations, consider passing a slim version instead. See
+    `sagents/docs/tool_context_and_state.md` ("Keep scope lean") for the pattern.
   - `:inactivity_timeout` - Milliseconds before agent stops (default: 10 minutes)
-  - `:tool_context` - Map of additional caller-supplied data that will be available to
-    all tool functions as their second argument. Defaults to `%{}`.
-    Note: `:user_scope` is automatically injected as `:current_scope` in `tool_context`,
-    so tool functions always have access to `context.current_scope`.
+  - `:tool_context` - Map of caller-supplied data. Its entries become keys on
+    the `context` map passed as the tool function's second argument. For example,
+    `%{feature_flags: flags}` here lets tools read `context.feature_flags`.
+    Defaults to `%{}`.
   - `:factory_opts` - Additional options passed to your Factory module (e.g., `:timezone` for custom middleware)
 
   ## Returns
@@ -136,16 +152,18 @@ defmodule AgentsDemo.Agents.Coordinator do
 
   ## Examples
 
-      # Standard usage - pass the filesystem scope explicitly
-      filesystem_scope = {:user, current_user.id}
+      # Standard usage - pass tenant scope and filesystem scope from the caller.
+      filesystem_scope = {:user, current_scope.user.id}
       {:ok, session} = AgentsDemo.Agents.Coordinator.start_conversation_session(
         conversation_id,
+        scope: current_scope,
         filesystem_scope: filesystem_scope
       )
 
       # Custom inactivity timeout (30 minutes)
       {:ok, session} = AgentsDemo.Agents.Coordinator.start_conversation_session(
         conversation_id,
+        scope: current_scope,
         filesystem_scope: {:user, user_id},
         inactivity_timeout: :timer.minutes(30)
       )
@@ -153,15 +171,19 @@ defmodule AgentsDemo.Agents.Coordinator do
       # With custom factory options (e.g., for timezone-aware middleware)
       {:ok, session} = AgentsDemo.Agents.Coordinator.start_conversation_session(
         conversation_id,
+        scope: current_scope,
         filesystem_scope: filesystem_scope,
         factory_opts: [timezone: "America/New_York"]
       )
 
-      # With caller context for tool functions
+      # With extra caller context for tool functions (scope is separate — don't
+      # stuff it into :tool_context). `:tool_context` is a grab-bag for
+      # non-scope data your own tools need.
       {:ok, session} = AgentsDemo.Agents.Coordinator.start_conversation_session(
         conversation_id,
+        scope: current_scope,
         filesystem_scope: filesystem_scope,
-        tool_context: %{user_id: user_id, tenant: "acme"}
+        tool_context: %{feature_flags: flags, request_id: req_id}
       )
 
   """
@@ -185,7 +207,7 @@ defmodule AgentsDemo.Agents.Coordinator do
           """
       end
 
-    user_scope = Keyword.get(opts, :user_scope)
+    scope = Keyword.get(opts, :scope)
     tool_context = Keyword.get(opts, :tool_context, %{})
 
     agent_id = conversation_agent_id(conversation_id)
@@ -196,7 +218,7 @@ defmodule AgentsDemo.Agents.Coordinator do
           conversation_id,
           agent_id,
           filesystem_scope,
-          user_scope,
+          scope,
           tool_context,
           opts
         )
@@ -436,7 +458,7 @@ defmodule AgentsDemo.Agents.Coordinator do
          conversation_id,
          agent_id,
          filesystem_scope,
-         user_scope,
+         scope,
          tool_context,
          opts
        ) do
@@ -448,23 +470,22 @@ defmodule AgentsDemo.Agents.Coordinator do
     timezone = Keyword.get(opts, :timezone, "UTC")
     factory_opts = Keyword.get(opts, :factory_opts, [])
 
-    # 2. Create agent from factory (configuration from code)
-    # Auto-merge user_scope into tool_context so tool functions always receive
-    # the Phoenix scope as context.current_scope.
-    tool_context = Map.put(tool_context, :current_scope, user_scope)
-
+    # 2. Create agent from factory (configuration from code).
+    # Scope is passed as a dedicated :scope option. Sagents auto-merges it into
+    # custom_context under the canonical :scope key and threads it through
+    # persistence callbacks as the first positional argument.
     merged_factory_opts =
       factory_opts
       |> Keyword.put(:agent_id, agent_id)
       |> Keyword.put(:filesystem_scope, filesystem_scope)
-      |> Keyword.put(:user_scope, user_scope)
+      |> Keyword.put(:scope, scope)
       |> Keyword.put(:tool_context, tool_context)
       |> Keyword.put(:timezone, timezone)
 
     {:ok, agent} = AgentsDemo.Agents.Factory.create_agent(merged_factory_opts)
 
-    # 3. Load or create state (data from database)
-    {:ok, state} = create_conversation_state(conversation_id)
+    # 3. Load or create state (data from database, scoped to the caller)
+    {:ok, state} = create_conversation_state(conversation_id, scope)
 
     # 4. Extract configuration from options
     inactivity_timeout =
@@ -523,10 +544,14 @@ defmodule AgentsDemo.Agents.Coordinator do
     end
   end
 
-  defp create_conversation_state(conversation_id) do
+  defp create_conversation_state(conversation_id, scope) do
     agent_id = conversation_agent_id(conversation_id)
 
-    load_result = AgentsDemo.Agents.AgentPersistence.load_state(agent_id)
+    load_result =
+      AgentsDemo.Agents.AgentPersistence.load_state(scope, %{
+        agent_id: agent_id,
+        conversation_id: conversation_id
+      })
 
     case load_result do
       {:ok, exported_state} ->
