@@ -1,4 +1,5 @@
 defmodule AgentsDemoWeb.ChatComponents do
+  @moduledoc false
   use Phoenix.Component
 
   use Phoenix.VerifiedRoutes,
@@ -256,9 +257,9 @@ defmodule AgentsDemoWeb.ChatComponents do
 
     cond do
       diff_seconds < 60 -> "Just now"
-      diff_seconds < 3600 -> "#{div(diff_seconds, 60)}m ago"
-      diff_seconds < 86400 -> "#{div(diff_seconds, 3600)}h ago"
-      diff_seconds < 604_800 -> "#{div(diff_seconds, 86400)}d ago"
+      diff_seconds < 3_600 -> "#{div(diff_seconds, 60)}m ago"
+      diff_seconds < 86_400 -> "#{div(diff_seconds, 3_600)}h ago"
+      diff_seconds < 604_800 -> "#{div(diff_seconds, 86_400)}d ago"
       true -> Calendar.strftime(datetime, "%b %d, %Y")
     end
   end
@@ -554,7 +555,7 @@ defmodule AgentsDemoWeb.ChatComponents do
           {"submit", "hero-paper-airplane",
            "bg-[var(--color-user-message)] opacity-50 cursor-not-allowed", true}
 
-        _ ->
+        _other ->
           {"submit", "hero-paper-airplane",
            "bg-[var(--color-user-message)] hover:opacity-90 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed",
            assigns.input == ""}
@@ -610,6 +611,10 @@ defmodule AgentsDemoWeb.ChatComponents do
             hitl_decision={get_in(@message.content, ["hitl_decision"])}
           />
         <% end %>
+      <% "notification" -> %>
+        <div class="px-4 py-1 text-sm italic text-[var(--color-text-secondary)]">
+          {get_in(@message.content, ["text"])}
+        </div>
       <% _other -> %>
         <.text_message
           message={@message}
@@ -725,7 +730,7 @@ defmodule AgentsDemoWeb.ChatComponents do
         "rejected" -> "w-5 h-5 text-orange-600 dark:text-orange-500"
         "interrupted" -> "w-5 h-5 text-yellow-600 dark:text-yellow-500"
         "cancelled" -> "w-5 h-5 text-red-600 dark:text-red-500"
-        _ -> "w-5 h-5 text-gray-400"
+        _other -> "w-5 h-5 text-gray-400"
       end
 
     assigns =
@@ -970,7 +975,7 @@ defmodule AgentsDemoWeb.ChatComponents do
   defp format_tool_arguments(args) when is_map(args) do
     Jason.encode!(args, pretty: true)
   rescue
-    _ -> inspect(args)
+    _other -> inspect(args)
   end
 
   defp format_tool_arguments(args), do: inspect(args)
@@ -981,7 +986,7 @@ defmodule AgentsDemoWeb.ChatComponents do
   defp format_tool_result_content(content) when is_map(content) do
     Jason.encode!(content, pretty: true)
   rescue
-    _ -> inspect(content)
+    _other -> inspect(content)
   end
 
   defp format_tool_result_content(contents) when is_list(contents) do
@@ -1008,7 +1013,7 @@ defmodule AgentsDemoWeb.ChatComponents do
             }
           end)
 
-        _ ->
+        _other ->
           []
       end
 
@@ -1547,7 +1552,7 @@ defmodule AgentsDemoWeb.ChatComponents do
             phx-click="question_cancel"
             class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline transition-colors duration-150"
           >
-            Skip this question
+            Cancel
           </button>
         <% end %>
       </div>
@@ -1571,7 +1576,7 @@ defmodule AgentsDemoWeb.ChatComponents do
   defp format_arg_value(value) when is_map(value) do
     case Jason.encode(value, pretty: true) do
       {:ok, json} -> json
-      _ -> inspect(value)
+      _other -> inspect(value)
     end
   end
 
