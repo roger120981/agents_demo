@@ -18,6 +18,9 @@ defmodule AgentsDemo.Conversations.DisplayMessage do
   - `"error"` - Error message
   - `"tool_call"` - Tool invocation request from assistant
   - `"tool_result"` - Tool execution result
+  - `"todo_snapshot"` - Point-in-time snapshot of an agent's todo list,
+    emitted by `Sagents.Middleware.TodoList` when configured with
+    `inline: true`
 
   ## Content Structure
 
@@ -30,6 +33,7 @@ defmodule AgentsDemo.Conversations.DisplayMessage do
   - File: `%{"path" => "/path", "name" => "report.pdf"}`
   - Tool call: `%{"call_id" => "call_123", "name" => "search", "arguments" => %{...}}`
   - Tool result: `%{"tool_call_id" => "call_123", "name" => "search", "content" => "...", "is_error" => false}`
+  - Todo snapshot: `%{"todos" => [%{"id" => "1", "content" => "Plan", "status" => "completed"}, ...], "summary" => %{"total" => 3, "pending" => 1, "in_progress" => 1, "completed" => 1, "cancelled" => 0}}`
 
   ## Sequence Field (Message-Local Ordering)
 
@@ -164,18 +168,28 @@ defmodule AgentsDemo.Conversations.DisplayMessage do
 
   # Allow nil during build
   defp validate_content(nil, _content), do: :ok
-  defp validate_content("text", %{"text" => _}), do: :ok
-  defp validate_content("thinking", %{"text" => _}), do: :ok
-  defp validate_content("image", %{"url" => _}), do: :ok
-  defp validate_content("image", %{"data" => _, "mime_type" => _}), do: :ok
-  defp validate_content("file_reference", %{"path" => _, "name" => _}), do: :ok
-  defp validate_content("structured_data", %{"format" => _, "data" => _}), do: :ok
-  defp validate_content("notification", %{"text" => _}), do: :ok
-  defp validate_content("error", %{"text" => _}), do: :ok
-  defp validate_content("tool_call", %{"call_id" => _, "name" => _, "arguments" => _}), do: :ok
+  defp validate_content("text", %{"text" => _text}), do: :ok
+  defp validate_content("thinking", %{"text" => _text}), do: :ok
+  defp validate_content("image", %{"url" => _url}), do: :ok
+  defp validate_content("image", %{"data" => _data, "mime_type" => _mime_type}), do: :ok
+  defp validate_content("file_reference", %{"path" => _path, "name" => _name}), do: :ok
+  defp validate_content("structured_data", %{"format" => _format, "data" => _data}), do: :ok
+  defp validate_content("notification", %{"text" => _text}), do: :ok
+  defp validate_content("error", %{"text" => _text}), do: :ok
 
-  defp validate_content("tool_result", %{"tool_call_id" => _, "name" => _, "content" => _}),
-    do: :ok
+  defp validate_content("tool_call", %{
+         "call_id" => _call_id,
+         "name" => _name,
+         "arguments" => _arguments
+       }),
+       do: :ok
+
+  defp validate_content("tool_result", %{
+         "tool_call_id" => _tool_call_id,
+         "name" => _name,
+         "content" => _content
+       }),
+       do: :ok
 
   defp validate_content("todo_snapshot", %{"todos" => todos}) when is_list(todos) do
     if Enum.all?(todos, &valid_todo_entry?/1),
