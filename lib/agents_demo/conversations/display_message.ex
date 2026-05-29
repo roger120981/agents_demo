@@ -201,7 +201,7 @@ defmodule AgentsDemo.Conversations.DisplayMessage do
     do: {:error, "invalid structure for content_type #{content_type}"}
 
   defp valid_todo_entry?(%{"id" => id, "content" => content, "status" => status})
-       when is_binary(id) and is_binary(content) and is_binary(status) do
+       when is_integer(id) and is_binary(content) and is_binary(status) do
     status in @todo_statuses
   end
 
