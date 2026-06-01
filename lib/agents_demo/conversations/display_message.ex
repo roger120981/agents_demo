@@ -33,7 +33,7 @@ defmodule AgentsDemo.Conversations.DisplayMessage do
   - File: `%{"path" => "/path", "name" => "report.pdf"}`
   - Tool call: `%{"call_id" => "call_123", "name" => "search", "arguments" => %{...}}`
   - Tool result: `%{"tool_call_id" => "call_123", "name" => "search", "content" => "...", "is_error" => false}`
-  - Todo snapshot: `%{"todos" => [%{"id" => "1", "content" => "Plan", "status" => "completed"}, ...], "summary" => %{"total" => 3, "pending" => 1, "in_progress" => 1, "completed" => 1, "cancelled" => 0}}`
+  - Todo snapshot: `%{"todos" => [%{"id" => 1, "content" => "Plan", "status" => "completed"}, ...], "summary" => %{"total" => 3, "pending" => 1, "in_progress" => 1, "completed" => 1, "cancelled" => 0}}`
 
   ## Sequence Field (Message-Local Ordering)
 

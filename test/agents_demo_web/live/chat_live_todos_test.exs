@@ -103,32 +103,32 @@ defmodule AgentsDemoWeb.ChatLiveTodosTest do
                   "todos" => [
                     %{
                       "content" => "Research project requirements and gather specifications",
-                      "id" => "1",
+                      "id" => 1,
                       "status" => "completed"
                     },
                     %{
                       "content" => "Design database schema and API endpoints",
-                      "id" => "2",
+                      "id" => 2,
                       "status" => "in_progress"
                     },
                     %{
                       "content" => "Implement user authentication system",
-                      "id" => "3",
+                      "id" => 3,
                       "status" => "pending"
                     },
                     %{
                       "content" => "Write unit tests for core functionality",
-                      "id" => "4",
+                      "id" => 4,
                       "status" => "pending"
                     },
                     %{
                       "content" => "Create documentation and user guide",
-                      "id" => "5",
+                      "id" => 5,
                       "status" => "pending"
                     },
                     %{
                       "content" => "Deploy to staging environment for testing",
-                      "id" => "6",
+                      "id" => 6,
                       "status" => "pending"
                     }
                   ]
@@ -243,8 +243,8 @@ defmodule AgentsDemoWeb.ChatLiveTodosTest do
                 arguments: %{
                   "merge" => false,
                   "todos" => [
-                    %{"content" => "Task 1", "id" => "1", "status" => "pending"},
-                    %{"content" => "Task 2", "id" => "2", "status" => "in_progress"}
+                    %{"content" => "Task 1", "id" => 1, "status" => "pending"},
+                    %{"content" => "Task 2", "id" => 2, "status" => "in_progress"}
                   ]
                 }
               })
@@ -349,8 +349,8 @@ defmodule AgentsDemoWeb.ChatLiveTodosTest do
                 arguments: %{
                   "merge" => false,
                   "todos" => [
-                    %{"content" => "Initial Task 1", "id" => "1", "status" => "pending"},
-                    %{"content" => "Initial Task 2", "id" => "2", "status" => "pending"}
+                    %{"content" => "Initial Task 1", "id" => 1, "status" => "pending"},
+                    %{"content" => "Initial Task 2", "id" => 2, "status" => "pending"}
                   ]
                 }
               })
@@ -392,7 +392,7 @@ defmodule AgentsDemoWeb.ChatLiveTodosTest do
               arguments: %{
                 "merge" => true,
                 "todos" => [
-                  %{"content" => "Initial Task 1", "id" => "1", "status" => "completed"}
+                  %{"content" => "Initial Task 1", "id" => 1, "status" => "completed"}
                 ]
               }
             })
@@ -410,10 +410,10 @@ defmodule AgentsDemoWeb.ChatLiveTodosTest do
       todos = updated_assigns[:todos]
       assert length(todos) == 2
 
-      task1 = Enum.find(todos, &(&1.id == "1"))
+      task1 = Enum.find(todos, &(&1.id == 1))
       assert task1.status == :completed
 
-      task2 = Enum.find(todos, &(&1.id == "2"))
+      task2 = Enum.find(todos, &(&1.id == 2))
       assert task2.status == :pending
     end
   end
@@ -434,7 +434,7 @@ defmodule AgentsDemoWeb.ChatLiveTodosTest do
                 name: "write_todos",
                 arguments: %{
                   "merge" => false,
-                  "todos" => [%{"content" => "Task 1", "id" => "1", "status" => "pending"}]
+                  "todos" => [%{"content" => "Task 1", "id" => 1, "status" => "pending"}]
                 }
               })
 

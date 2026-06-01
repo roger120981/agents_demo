@@ -447,9 +447,9 @@ defmodule AgentsDemo.ConversationsTest do
 
       content = %{
         "todos" => [
-          %{"id" => "1", "content" => "Plan", "status" => "completed"},
-          %{"id" => "2", "content" => "Execute", "status" => "in_progress"},
-          %{"id" => "3", "content" => "Verify", "status" => "pending"}
+          %{"id" => 1, "content" => "Plan", "status" => "completed"},
+          %{"id" => 2, "content" => "Execute", "status" => "in_progress"},
+          %{"id" => 3, "content" => "Verify", "status" => "pending"}
         ],
         "summary" => %{
           "total" => 3,
@@ -516,7 +516,7 @@ defmodule AgentsDemo.ConversationsTest do
                  content_type: "todo_snapshot",
                  content: %{
                    "todos" => [
-                     %{"id" => "1", "content" => "Bad", "status" => "not_a_status"}
+                     %{"id" => 1, "content" => "Bad", "status" => "not_a_status"}
                    ]
                  }
                })
