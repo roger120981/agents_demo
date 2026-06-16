@@ -728,4 +728,114 @@ defmodule AgentsDemo.ConversationsTest do
       assert Enum.at(messages, 3).sequence == 0
     end
   end
+
+  describe "tool call lifecycle (by denormalized tool_call_id)" do
+    test "marks a pending tool call as executing, located via the tool_call_id column" do
+      scope = user_scope_fixture()
+      conversation = conversation_fixture(%{scope: scope})
+      {:ok, _row} = insert_tool_call(scope, conversation.id, "call_1")
+
+      assert {:ok, updated} = Conversations.mark_tool_executing(scope, "call_1")
+      assert updated.status == "executing"
+      assert updated.tool_call_id == "call_1"
+    end
+
+    test "completes a tool call and merges result metadata" do
+      scope = user_scope_fixture()
+      conversation = conversation_fixture(%{scope: scope})
+      {:ok, _row} = insert_tool_call(scope, conversation.id, "call_1")
+
+      assert {:ok, updated} =
+               Conversations.complete_tool_call(scope, "call_1", %{"result" => "done"})
+
+      assert updated.status == "completed"
+      assert updated.metadata["result"] == "done"
+    end
+
+    test "fails, interrupts, and cancels a tool call by call_id" do
+      scope = user_scope_fixture()
+      conversation = conversation_fixture(%{scope: scope})
+
+      {:ok, _row} = insert_tool_call(scope, conversation.id, "call_fail")
+
+      assert {:ok, failed} =
+               Conversations.fail_tool_call(scope, "call_fail", %{"error" => "boom"})
+
+      assert failed.status == "failed"
+      assert failed.metadata["error"] == "boom"
+
+      {:ok, _row} = insert_tool_call(scope, conversation.id, "call_int")
+      assert {:ok, interrupted} = Conversations.interrupt_tool_call(scope, "call_int", %{})
+      assert interrupted.status == "interrupted"
+
+      {:ok, _row} = insert_tool_call(scope, conversation.id, "call_cancel")
+      assert {:ok, cancelled} = Conversations.cancel_tool_call(scope, "call_cancel")
+      assert cancelled.status == "cancelled"
+    end
+
+    test "wrong-scope caller cannot transition the tool call" do
+      owner = user_scope_fixture()
+      other = user_scope_fixture()
+      conversation = conversation_fixture(%{scope: owner})
+      {:ok, _row} = insert_tool_call(owner, conversation.id, "call_1")
+
+      assert {:error, :not_found} = Conversations.mark_tool_executing(other, "call_1")
+    end
+
+    test "record_hitl_decision stamps both the tool_call and its matching tool_result" do
+      scope = user_scope_fixture()
+      conversation = conversation_fixture(%{scope: scope})
+      {:ok, _call} = insert_tool_call(scope, conversation.id, "call_1")
+      {:ok, _result} = insert_tool_result(scope, conversation.id, "call_1")
+
+      assert {:ok, call_row} = Conversations.record_hitl_decision(scope, "call_1", "approved")
+      assert call_row.metadata["hitl_decision"] == "approved"
+
+      [_call, result] =
+        scope
+        |> Conversations.load_display_messages(conversation.id)
+        |> Enum.sort_by(& &1.content_type)
+
+      assert result.content["hitl_decision"] == "approved"
+    end
+
+    test "resolves an interrupted tool_result located via the tool_call_id column" do
+      scope = user_scope_fixture()
+      conversation = conversation_fixture(%{scope: scope})
+
+      {:ok, _result} =
+        insert_tool_result(scope, conversation.id, "call_1", %{"is_interrupt" => true})
+
+      assert {:ok, resolved} =
+               Conversations.resolve_interrupted_tool_result(scope, "call_1", "the answer")
+
+      assert resolved.content["content"] == "the answer"
+      assert resolved.content["is_interrupt"] == false
+    end
+  end
+
+  defp insert_tool_call(scope, conversation_id, call_id) do
+    Conversations.append_display_message(scope, conversation_id, %{
+      message_type: "assistant",
+      content_type: "tool_call",
+      content: %{"call_id" => call_id, "name" => "search", "arguments" => %{}},
+      tool_call_id: call_id,
+      status: "pending"
+    })
+  end
+
+  defp insert_tool_result(scope, conversation_id, call_id, extra_content \\ %{}) do
+    content =
+      Map.merge(
+        %{"tool_call_id" => call_id, "name" => "search", "content" => "result"},
+        extra_content
+      )
+
+    Conversations.append_display_message(scope, conversation_id, %{
+      message_type: "tool",
+      content_type: "tool_result",
+      content: content,
+      tool_call_id: call_id
+    })
+  end
 end

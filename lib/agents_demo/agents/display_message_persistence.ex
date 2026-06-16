@@ -28,12 +28,22 @@ defmodule AgentsDemo.Agents.DisplayMessagePersistence do
           "content" => item.content
         }
 
-        # Set status to "pending" for tool calls
+        # Denormalize the tool-call id out of `content` into the top-level
+        # `tool_call_id` column so the lifecycle queries can use an indexed
+        # equality lookup. Tool calls additionally start in "pending" status.
         attrs =
-          if item.type == :tool_call do
-            Map.put(attrs, "status", "pending")
-          else
-            attrs
+          case item do
+            %{type: :tool_call, content: %{"call_id" => call_id}} ->
+              Map.merge(attrs, %{
+                "tool_call_id" => call_id,
+                "status" => "pending"
+              })
+
+            %{type: :tool_result, content: %{"tool_call_id" => tool_call_id}} ->
+              Map.put(attrs, "tool_call_id", tool_call_id)
+
+            _other ->
+              attrs
           end
 
         case AgentsDemo.Conversations.append_display_message(

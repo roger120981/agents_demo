@@ -103,6 +103,7 @@ defmodule AgentsDemo.Conversations.DisplayMessage do
     field :message_type, :string
     # Flexible JSONB storage
     field :content, :map
+    field :tool_call_id, :string
     # Type of content for rendering
     field :content_type, :string
     # Message-local ordering (0-based, resets per message)
@@ -118,7 +119,15 @@ defmodule AgentsDemo.Conversations.DisplayMessage do
   @doc false
   def create_changeset(conversation_id, attrs) do
     %DisplayMessage{}
-    |> cast(attrs, [:message_type, :content, :content_type, :sequence, :status, :metadata])
+    |> cast(attrs, [
+      :message_type,
+      :content,
+      :tool_call_id,
+      :content_type,
+      :sequence,
+      :status,
+      :metadata
+    ])
     |> put_change(:conversation_id, conversation_id)
     |> common_validations()
   end
@@ -126,7 +135,15 @@ defmodule AgentsDemo.Conversations.DisplayMessage do
   @doc false
   def changeset(%DisplayMessage{} = message, attrs) do
     message
-    |> cast(attrs, [:message_type, :content, :content_type, :sequence, :status, :metadata])
+    |> cast(attrs, [
+      :message_type,
+      :content,
+      :tool_call_id,
+      :content_type,
+      :sequence,
+      :status,
+      :metadata
+    ])
     |> common_validations()
   end
 
@@ -145,10 +162,6 @@ defmodule AgentsDemo.Conversations.DisplayMessage do
     |> validate_number(:sequence, greater_than_or_equal_to: 0)
     |> validate_content_structure()
     |> foreign_key_constraint(:conversation_id)
-    |> unique_constraint(:conversation_id,
-      name: :unique_tool_call_per_conversation,
-      message: "tool call already exists for this conversation"
-    )
   end
 
   # Validate content structure based on content_type.
