@@ -28,7 +28,7 @@ defmodule AgentsDemo.Agents.DisplayMessagePersistence do
           "content" => item.content
         }
 
-        # Denormalize the tool-call id out of `content` into the top-level
+        # Pull the tool-call id out of `content` into the top-level
         # `tool_call_id` column so the lifecycle queries can use an indexed
         # equality lookup. Tool calls additionally start in "pending" status.
         attrs =
