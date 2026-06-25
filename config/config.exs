@@ -38,6 +38,9 @@ config :agents_demo, AgentsDemoWeb.Endpoint,
   pubsub_server: AgentsDemo.PubSub,
   live_view: [signing_salt: "c/6Ru4XK"]
 
+# Markdown syntax highlighting
+config :mdex_native, syntax_highlighter: :lumis
+
 # Configures the mailer
 #
 # By default it uses the "Local" adapter which stores the emails
