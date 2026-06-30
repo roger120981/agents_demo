@@ -32,6 +32,19 @@ config :langchain, async_tool_timeout: :infinity
 # Set to :local for non-Horde single-node mode (default if not configured).
 config :sagents, :distribution, :horde
 
+# Horde cluster membership — which nodes can host agents.
+#
+# `:auto` (the default when unset) keeps membership equal to every connected
+# BEAM node via Horde.NodeListener, with dead-node pruning. Correct here because
+# every node in this app runs `Sagents.Supervisor` (see application.ex), so all
+# connected nodes are valid agent hosts.
+#
+# Use `:participation` instead only if you mesh mixed roles into one Erlang
+# cluster and some nodes must NOT host agents. With it, an optional per-node
+# `:partition` (e.g. `System.get_env("FLY_REGION")`) isolates membership into
+# independent groups. See deps/sagents/docs/clustering.md.
+config :sagents, :horde, members: :auto
+
 # ## Using releases
 #
 # If you use `mix release`, you need to explicitly enable the server
